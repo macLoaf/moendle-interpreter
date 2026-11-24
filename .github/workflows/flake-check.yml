@@ -1,0 +1,36 @@
+# Taken with permission from https://github.com/tsandrini/flake-parts-builder/blob/9eda2d9a7bc6949568147acaecb60ef9a7ab4552/flake-parts/gh-actions-check/.github/workflows/flake-check.yml
+name: Check Nix flake
+
+on:
+  workflow_dispatch: # allows manual triggering from the Actions UI
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  flake-check:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Checking out repository..."
+        uses: actions/checkout@v5
+
+      - name: "Installing Nix..."
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+
+      - name: "Setting up packages..."
+        run: |
+          nix profile install --inputs-from . nixpkgs#nix-fast-build # parallel nix builder
+
+      - name: "Running `nix build ...`..."
+        run: nix-fast-build --skip-cached --no-nom --flake ".#packages"
+
+      - name: "Running `nix develop...`..."
+        run: nix-fast-build --skip-cached --no-nom --flake ".#devShells"
